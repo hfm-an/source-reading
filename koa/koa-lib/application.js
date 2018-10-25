@@ -24,6 +24,7 @@ const deprecate = require('depd')('koa');
 /**
  * Expose `Application` class.
  * Inherits from `Emitter.prototype`.
+ * 继承自 Emit
  */
 
 module.exports = class Application extends Emitter {
@@ -64,6 +65,7 @@ module.exports = class Application extends Emitter {
         // 这个函数作为 createServer 的回调函数
         // 有请求进来的时候，会执行那个函数
         const server = http.createServer(this.callback());
+        // 只是 http.createServer 的语法糖
         return server.listen(...args);
     }
 
@@ -102,6 +104,8 @@ module.exports = class Application extends Emitter {
      * @param {Function} fn
      * @return {Application} self
      * @api public
+     *
+     * use 方法的作用，仅仅是向 middleware 这个 list 里添加中间件
      */
 
     use (fn) {
@@ -208,6 +212,7 @@ module.exports = class Application extends Emitter {
 
 /**
  * Response helper.
+ * 处理 response
  */
 
 function respond (ctx) {
@@ -227,6 +232,7 @@ function respond (ctx) {
         return res.end();
     }
 
+    // 单独处理 head 请求
     if ('HEAD' == ctx.method) {
         if (!res.headersSent && isJSON(body)) {
             ctx.length = Buffer.byteLength(JSON.stringify(body));
@@ -245,6 +251,7 @@ function respond (ctx) {
     }
 
     // responses
+    // 不同的 body 类型
     if (Buffer.isBuffer(body)) return res.end(body);
     if ('string' == typeof body) return res.end(body);
     if (body instanceof Stream) return body.pipe(res);
