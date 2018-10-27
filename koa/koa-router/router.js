@@ -44,26 +44,33 @@ module.exports = Router;
  * @param {Object=} opts
  * @param {String=} opts.prefix prefix router paths
  * @constructor
+ *
+ * 主构造函数
  */
 
-function Router(opts) {
-  if (!(this instanceof Router)) {
-    return new Router(opts);
-  }
+function Router (opts) {
+    // 如果说是以函数调用这个 Router 构造函数，而不是 new 的形式调用的话
+    // 则我们手动去以构造函数的形式调用 Router
+    if (!(this instanceof Router)) {
+        return new Router(opts);
+    }
 
-  this.opts = opts || {};
-  this.methods = this.opts.methods || [
-    'HEAD',
-    'OPTIONS',
-    'GET',
-    'PUT',
-    'PATCH',
-    'POST',
-    'DELETE'
-  ];
+    // 这里将 opts 缓存到 router 这个实例上
+    this.opts = opts || {};
+    // 这里也就是说，我们可以自定义这个 Router 的 methods
+    // 没有自定义的话，则支持全部好吧
+    this.methods = this.opts.methods || [
+        'HEAD',
+        'OPTIONS',
+        'GET',
+        'PUT',
+        'PATCH',
+        'POST',
+        'DELETE'
+    ];
 
-  this.params = {};
-  this.stack = [];
+    this.params = {};
+    this.stack = [];
 };
 
 /**
@@ -188,23 +195,23 @@ function Router(opts) {
  */
 
 methods.forEach(function (method) {
-  Router.prototype[method] = function (name, path, middleware) {
-    var middleware;
+    Router.prototype[method] = function (name, path, middleware) {
+        var middleware;
 
-    if (typeof path === 'string' || path instanceof RegExp) {
-      middleware = Array.prototype.slice.call(arguments, 2);
-    } else {
-      middleware = Array.prototype.slice.call(arguments, 1);
-      path = name;
-      name = null;
-    }
+        if (typeof path === 'string' || path instanceof RegExp) {
+            middleware = Array.prototype.slice.call(arguments, 2);
+        } else {
+            middleware = Array.prototype.slice.call(arguments, 1);
+            path = name;
+            name = null;
+        }
 
-    this.register(path, [method], middleware, {
-      name: name
-    });
+        this.register(path, [method], middleware, {
+            name: name
+        });
 
-    return this;
-  };
+        return this;
+    };
 });
 
 // Alias for `router.delete()` because delete is a reserved word
@@ -241,43 +248,43 @@ Router.prototype.del = Router.prototype['delete'];
  */
 
 Router.prototype.use = function () {
-  var router = this;
-  var middleware = Array.prototype.slice.call(arguments);
-  var path;
+    var router = this;
+    var middleware = Array.prototype.slice.call(arguments);
+    var path;
 
-  // support array of paths
-  if (Array.isArray(middleware[0]) && typeof middleware[0][0] === 'string') {
-    middleware[0].forEach(function (p) {
-      router.use.apply(router, [p].concat(middleware.slice(1)));
+    // support array of paths
+    if (Array.isArray(middleware[0]) && typeof middleware[0][0] === 'string') {
+        middleware[0].forEach(function (p) {
+            router.use.apply(router, [p].concat(middleware.slice(1)));
+        });
+
+        return this;
+    }
+
+    var hasPath = typeof middleware[0] === 'string';
+    if (hasPath) {
+        path = middleware.shift();
+    }
+
+    middleware.forEach(function (m) {
+        if (m.router) {
+            m.router.stack.forEach(function (nestedLayer) {
+                if (path) nestedLayer.setPrefix(path);
+                if (router.opts.prefix) nestedLayer.setPrefix(router.opts.prefix);
+                router.stack.push(nestedLayer);
+            });
+
+            if (router.params) {
+                Object.keys(router.params).forEach(function (key) {
+                    m.router.param(key, router.params[key]);
+                });
+            }
+        } else {
+            router.register(path || '(.*)', [], m, {end: false, ignoreCaptures: !hasPath});
+        }
     });
 
     return this;
-  }
-
-  var hasPath = typeof middleware[0] === 'string';
-  if (hasPath) {
-    path = middleware.shift();
-  }
-
-  middleware.forEach(function (m) {
-    if (m.router) {
-      m.router.stack.forEach(function (nestedLayer) {
-        if (path) nestedLayer.setPrefix(path);
-        if (router.opts.prefix) nestedLayer.setPrefix(router.opts.prefix);
-        router.stack.push(nestedLayer);
-      });
-
-      if (router.params) {
-        Object.keys(router.params).forEach(function (key) {
-          m.router.param(key, router.params[key]);
-        });
-      }
-    } else {
-      router.register(path || '(.*)', [], m, { end: false, ignoreCaptures: !hasPath });
-    }
-  });
-
-  return this;
 };
 
 /**
@@ -294,15 +301,15 @@ Router.prototype.use = function () {
  */
 
 Router.prototype.prefix = function (prefix) {
-  prefix = prefix.replace(/\/$/, '');
+    prefix = prefix.replace(/\/$/, '');
 
-  this.opts.prefix = prefix;
+    this.opts.prefix = prefix;
 
-  this.stack.forEach(function (route) {
-    route.setPrefix(prefix);
-  });
+    this.stack.forEach(function (route) {
+        route.setPrefix(prefix);
+    });
 
-  return this;
+    return this;
 };
 
 /**
@@ -312,48 +319,48 @@ Router.prototype.prefix = function (prefix) {
  */
 
 Router.prototype.routes = Router.prototype.middleware = function () {
-  var router = this;
+    var router = this;
 
-  var dispatch = function dispatch(ctx, next) {
-    debug('%s %s', ctx.method, ctx.path);
+    var dispatch = function dispatch (ctx, next) {
+        debug('%s %s', ctx.method, ctx.path);
 
-    var path = router.opts.routerPath || ctx.routerPath || ctx.path;
-    var matched = router.match(path, ctx.method);
-    var layerChain, layer, i;
+        var path = router.opts.routerPath || ctx.routerPath || ctx.path;
+        var matched = router.match(path, ctx.method);
+        var layerChain, layer, i;
 
-    if (ctx.matched) {
-      ctx.matched.push.apply(ctx.matched, matched.path);
-    } else {
-      ctx.matched = matched.path;
-    }
+        if (ctx.matched) {
+            ctx.matched.push.apply(ctx.matched, matched.path);
+        } else {
+            ctx.matched = matched.path;
+        }
 
-    ctx.router = router;
+        ctx.router = router;
 
-    if (!matched.route) return next();
+        if (!matched.route) return next();
 
-    var matchedLayers = matched.pathAndMethod
-    var mostSpecificLayer = matchedLayers[matchedLayers.length - 1]
-    ctx._matchedRoute = mostSpecificLayer.path;
-    if (mostSpecificLayer.name) {
-      ctx._matchedRouteName = mostSpecificLayer.name;
-    }
+        var matchedLayers = matched.pathAndMethod
+        var mostSpecificLayer = matchedLayers[matchedLayers.length - 1]
+        ctx._matchedRoute = mostSpecificLayer.path;
+        if (mostSpecificLayer.name) {
+            ctx._matchedRouteName = mostSpecificLayer.name;
+        }
 
-    layerChain = matchedLayers.reduce(function(memo, layer) {
-      memo.push(function(ctx, next) {
-        ctx.captures = layer.captures(path, ctx.captures);
-        ctx.params = layer.params(path, ctx.captures, ctx.params);
-        ctx.routerName = layer.name;
-        return next();
-      });
-      return memo.concat(layer.stack);
-    }, []);
+        layerChain = matchedLayers.reduce(function (memo, layer) {
+            memo.push(function (ctx, next) {
+                ctx.captures = layer.captures(path, ctx.captures);
+                ctx.params = layer.params(path, ctx.captures, ctx.params);
+                ctx.routerName = layer.name;
+                return next();
+            });
+            return memo.concat(layer.stack);
+        }, []);
 
-    return compose(layerChain)(ctx, next);
-  };
+        return compose(layerChain)(ctx, next);
+    };
 
-  dispatch.router = this;
+    dispatch.router = this;
 
-  return dispatch;
+    return dispatch;
 };
 
 /**
@@ -400,58 +407,58 @@ Router.prototype.routes = Router.prototype.middleware = function () {
  */
 
 Router.prototype.allowedMethods = function (options) {
-  options = options || {};
-  var implemented = this.methods;
+    options = options || {};
+    var implemented = this.methods;
 
-  return function allowedMethods(ctx, next) {
-    return next().then(function() {
-      var allowed = {};
+    return function allowedMethods (ctx, next) {
+        return next().then(function () {
+            var allowed = {};
 
-      if (!ctx.status || ctx.status === 404) {
-        ctx.matched.forEach(function (route) {
-          route.methods.forEach(function (method) {
-            allowed[method] = method;
-          });
+            if (!ctx.status || ctx.status === 404) {
+                ctx.matched.forEach(function (route) {
+                    route.methods.forEach(function (method) {
+                        allowed[method] = method;
+                    });
+                });
+
+                var allowedArr = Object.keys(allowed);
+
+                if (!~implemented.indexOf(ctx.method)) {
+                    if (options.throw) {
+                        var notImplementedThrowable;
+                        if (typeof options.notImplemented === 'function') {
+                            notImplementedThrowable = options.notImplemented(); // set whatever the user returns from their function
+                        } else {
+                            notImplementedThrowable = new HttpError.NotImplemented();
+                        }
+                        throw notImplementedThrowable;
+                    } else {
+                        ctx.status = 501;
+                        ctx.set('Allow', allowedArr.join(', '));
+                    }
+                } else if (allowedArr.length) {
+                    if (ctx.method === 'OPTIONS') {
+                        ctx.status = 200;
+                        ctx.body = '';
+                        ctx.set('Allow', allowedArr.join(', '));
+                    } else if (!allowed[ctx.method]) {
+                        if (options.throw) {
+                            var notAllowedThrowable;
+                            if (typeof options.methodNotAllowed === 'function') {
+                                notAllowedThrowable = options.methodNotAllowed(); // set whatever the user returns from their function
+                            } else {
+                                notAllowedThrowable = new HttpError.MethodNotAllowed();
+                            }
+                            throw notAllowedThrowable;
+                        } else {
+                            ctx.status = 405;
+                            ctx.set('Allow', allowedArr.join(', '));
+                        }
+                    }
+                }
+            }
         });
-
-        var allowedArr = Object.keys(allowed);
-
-        if (!~implemented.indexOf(ctx.method)) {
-          if (options.throw) {
-            var notImplementedThrowable;
-            if (typeof options.notImplemented === 'function') {
-              notImplementedThrowable = options.notImplemented(); // set whatever the user returns from their function
-            } else {
-              notImplementedThrowable = new HttpError.NotImplemented();
-            }
-            throw notImplementedThrowable;
-          } else {
-            ctx.status = 501;
-            ctx.set('Allow', allowedArr.join(', '));
-          }
-        } else if (allowedArr.length) {
-          if (ctx.method === 'OPTIONS') {
-            ctx.status = 200;
-            ctx.body = '';
-            ctx.set('Allow', allowedArr.join(', '));
-          } else if (!allowed[ctx.method]) {
-            if (options.throw) {
-              var notAllowedThrowable;
-              if (typeof options.methodNotAllowed === 'function') {
-                notAllowedThrowable = options.methodNotAllowed(); // set whatever the user returns from their function
-              } else {
-                notAllowedThrowable = new HttpError.MethodNotAllowed();
-              }
-              throw notAllowedThrowable;
-            } else {
-              ctx.status = 405;
-              ctx.set('Allow', allowedArr.join(', '));
-            }
-          }
-        }
-      }
-    });
-  };
+    };
 };
 
 /**
@@ -466,21 +473,21 @@ Router.prototype.allowedMethods = function (options) {
  */
 
 Router.prototype.all = function (name, path, middleware) {
-  var middleware;
+    var middleware;
 
-  if (typeof path === 'string') {
-    middleware = Array.prototype.slice.call(arguments, 2);
-  } else {
-    middleware = Array.prototype.slice.call(arguments, 1);
-    path = name;
-    name = null;
-  }
+    if (typeof path === 'string') {
+        middleware = Array.prototype.slice.call(arguments, 2);
+    } else {
+        middleware = Array.prototype.slice.call(arguments, 1);
+        path = name;
+        name = null;
+    }
 
-  this.register(path, methods, middleware, {
-    name: name
-  });
+    this.register(path, methods, middleware, {
+        name: name
+    });
 
-  return this;
+    return this;
 };
 
 /**
@@ -508,20 +515,20 @@ Router.prototype.all = function (name, path, middleware) {
  */
 
 Router.prototype.redirect = function (source, destination, code) {
-  // lookup source route by name
-  if (source[0] !== '/') {
-    source = this.url(source);
-  }
+    // lookup source route by name
+    if (source[0] !== '/') {
+        source = this.url(source);
+    }
 
-  // lookup destination route by name
-  if (destination[0] !== '/') {
-    destination = this.url(destination);
-  }
+    // lookup destination route by name
+    if (destination[0] !== '/') {
+        destination = this.url(destination);
+    }
 
-  return this.all(source, ctx => {
-    ctx.redirect(destination);
-    ctx.status = code || 301;
-  });
+    return this.all(source, ctx => {
+        ctx.redirect(destination);
+        ctx.status = code || 301;
+    });
 };
 
 /**
@@ -535,42 +542,42 @@ Router.prototype.redirect = function (source, destination, code) {
  */
 
 Router.prototype.register = function (path, methods, middleware, opts) {
-  opts = opts || {};
+    opts = opts || {};
 
-  var router = this;
-  var stack = this.stack;
+    var router = this;
+    var stack = this.stack;
 
-  // support array of paths
-  if (Array.isArray(path)) {
-    path.forEach(function (p) {
-      router.register.call(router, p, methods, middleware, opts);
+    // support array of paths
+    if (Array.isArray(path)) {
+        path.forEach(function (p) {
+            router.register.call(router, p, methods, middleware, opts);
+        });
+
+        return this;
+    }
+
+    // create route
+    var route = new Layer(path, methods, middleware, {
+        end: opts.end === false ? opts.end : true,
+        name: opts.name,
+        sensitive: opts.sensitive || this.opts.sensitive || false,
+        strict: opts.strict || this.opts.strict || false,
+        prefix: opts.prefix || this.opts.prefix || "",
+        ignoreCaptures: opts.ignoreCaptures
     });
 
-    return this;
-  }
+    if (this.opts.prefix) {
+        route.setPrefix(this.opts.prefix);
+    }
 
-  // create route
-  var route = new Layer(path, methods, middleware, {
-    end: opts.end === false ? opts.end : true,
-    name: opts.name,
-    sensitive: opts.sensitive || this.opts.sensitive || false,
-    strict: opts.strict || this.opts.strict || false,
-    prefix: opts.prefix || this.opts.prefix || "",
-    ignoreCaptures: opts.ignoreCaptures
-  });
+    // add parameter middleware
+    Object.keys(this.params).forEach(function (param) {
+        route.param(param, this.params[param]);
+    }, this);
 
-  if (this.opts.prefix) {
-    route.setPrefix(this.opts.prefix);
-  }
+    stack.push(route);
 
-  // add parameter middleware
-  Object.keys(this.params).forEach(function (param) {
-    route.param(param, this.params[param]);
-  }, this);
-
-  stack.push(route);
-
-  return route;
+    return route;
 };
 
 /**
@@ -581,15 +588,15 @@ Router.prototype.register = function (path, methods, middleware, opts) {
  */
 
 Router.prototype.route = function (name) {
-  var routes = this.stack;
+    var routes = this.stack;
 
-  for (var len = routes.length, i=0; i<len; i++) {
-    if (routes[i].name && routes[i].name === name) {
-      return routes[i];
+    for (var len = routes.length, i = 0; i < len; i++) {
+        if (routes[i].name && routes[i].name === name) {
+            return routes[i];
+        }
     }
-  }
 
-  return false;
+    return false;
 };
 
 /**
@@ -628,14 +635,14 @@ Router.prototype.route = function (name) {
  */
 
 Router.prototype.url = function (name, params) {
-  var route = this.route(name);
+    var route = this.route(name);
 
-  if (route) {
-    var args = Array.prototype.slice.call(arguments, 1);
-    return route.url.apply(route, args);
-  }
+    if (route) {
+        var args = Array.prototype.slice.call(arguments, 1);
+        return route.url.apply(route, args);
+    }
 
-  return new Error("No route found for name: " + name);
+    return new Error("No route found for name: " + name);
 };
 
 /**
@@ -649,30 +656,30 @@ Router.prototype.url = function (name, params) {
  */
 
 Router.prototype.match = function (path, method) {
-  var layers = this.stack;
-  var layer;
-  var matched = {
-    path: [],
-    pathAndMethod: [],
-    route: false
-  };
+    var layers = this.stack;
+    var layer;
+    var matched = {
+        path: [],
+        pathAndMethod: [],
+        route: false
+    };
 
-  for (var len = layers.length, i = 0; i < len; i++) {
-    layer = layers[i];
+    for (var len = layers.length, i = 0; i < len; i++) {
+        layer = layers[i];
 
-    debug('test %s %s', layer.path, layer.regexp);
+        debug('test %s %s', layer.path, layer.regexp);
 
-    if (layer.match(path)) {
-      matched.path.push(layer);
+        if (layer.match(path)) {
+            matched.path.push(layer);
 
-      if (layer.methods.length === 0 || ~layer.methods.indexOf(method)) {
-        matched.pathAndMethod.push(layer);
-        if (layer.methods.length) matched.route = true;
-      }
+            if (layer.methods.length === 0 || ~layer.methods.indexOf(method)) {
+                matched.pathAndMethod.push(layer);
+                if (layer.methods.length) matched.route = true;
+            }
+        }
     }
-  }
 
-  return matched;
+    return matched;
 };
 
 /**
@@ -706,11 +713,11 @@ Router.prototype.match = function (path, method) {
  */
 
 Router.prototype.param = function (param, middleware) {
-  this.params[param] = middleware;
-  this.stack.forEach(function (route) {
-    route.param(param, middleware);
-  });
-  return this;
+    this.params[param] = middleware;
+    this.stack.forEach(function (route) {
+        route.param(param, middleware);
+    });
+    return this;
 };
 
 /**
@@ -729,5 +736,5 @@ Router.prototype.param = function (param, middleware) {
  */
 Router.url = function (path, params) {
     var args = Array.prototype.slice.call(arguments, 1);
-    return Layer.prototype.url.apply({ path: path }, args);
+    return Layer.prototype.url.apply({path: path}, args);
 };
