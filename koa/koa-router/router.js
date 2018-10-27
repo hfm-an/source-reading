@@ -127,6 +127,10 @@ function Router (opts) {
  *
  * Multiple middleware may be given:
  *
+ * 多个中间件的时候，可以直接写在 router.get() 的参数里
+ * 但是还是 router.get(path, middleware1, middleware2, finalMiddleware)
+ * 执行循序还是，先 finalMiddleware -> middleware2 -> middleware1 -> resolveResponse(xxx)
+ *
  * ```javascript
  * router.get(
  *   '/users/:id',
@@ -194,22 +198,79 @@ function Router (opts) {
  * @returns {Router}
  */
 
+/**
+ * 这个 methods ，会返回所有 http 模块支持的 method 列表
+ * 类似这种：
+ * [
+     'ACL',
+     'BIND',
+     'CHECKOUT',
+     'CONNECT',
+     'COPY',
+     'DELETE',
+     'GET',
+     'HEAD',
+     'LINK',
+     'LOCK',
+     'M-SEARCH',
+     'MERGE',
+     'MKACTIVITY',
+     'MKCALENDAR',
+     'MKCOL',
+     'MOVE',
+     'NOTIFY',
+     'OPTIONS',
+     'PATCH',
+     'POST',
+     'PROPFIND',
+     'PROPPATCH',
+     'PURGE',
+     'PUT',
+     'REBIND',
+     'REPORT',
+     'SEARCH',
+     'SUBSCRIBE',
+     'TRACE',
+     'UNBIND',
+     'UNLINK',
+     'UNLOCK',
+     'UNSUBSCRIBE'
+ ]
+ */
 methods.forEach(function (method) {
+    // 类似 `get`, `post` 之类的被定义到了 Router 的 prototype 上
+    // 所以我们可以 router.get(xxx).post(xxx)
+    // 也算是一种业界公认的 api 设计方式
     Router.prototype[method] = function (name, path, middleware) {
         var middleware;
 
+        // 如果说第二个参数还是 string 或者 regexp 的话
+        // 则默认指定第三个参数开始为中间件
+        // 对应上面的 Named routes
+        // 类似 router.get('user', /^\/user.*$/, middlewares, ...)
+        // 会把 user 作为这个 router 的 namespace, 然后后面的正则表达式或者字符串，才被认为是 path
         if (typeof path === 'string' || path instanceof RegExp) {
             middleware = Array.prototype.slice.call(arguments, 2);
         } else {
+            // 否则则默认第二个参数开始就是中间件
             middleware = Array.prototype.slice.call(arguments, 1);
             path = name;
+            // 也就是说 router.get('/123', middleware1, middleware2) 这种形式的调用
+            // 最终会把 `/123` 识别为 path，此时 name 会被置为 null
             name = null;
         }
 
+        // 从函数名字上来看是注册的样子
+        // 这里特意把 name 作为一个配置在最后传入
         this.register(path, [method], middleware, {
             name: name
         });
 
+        // 每次都 return 的这个实例
+        // 所以就可以直接进行链式调用
+        // 但是我觉得为了组织我们自己的 router
+        // 最好还是把每个 controller 作为一个 router 的包装函数
+        // 函数内部给 router 实例挂上各种各样的 .get, .post 之类的
         return this;
     };
 });
