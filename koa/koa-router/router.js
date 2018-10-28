@@ -595,6 +595,8 @@ Router.prototype.redirect = function (source, destination, code) {
 /**
  * Create and register a route.
  *
+ * 创建并注册路由
+ *
  * @param {String} path Path string.
  * @param {Array.<String>} methods Array of HTTP verbs.
  * @param {Function} middleware Multiple middleware also accepted.
@@ -603,12 +605,18 @@ Router.prototype.redirect = function (source, destination, code) {
  */
 
 Router.prototype.register = function (path, methods, middleware, opts) {
+    // 在 routes.get(), routes.post 里，这个其实是标示着这个 router 的 namespace
+    // 类似这样的调用
+    // this.register(path, [method], middleware, {
+    //     name: name
+    // });
     opts = opts || {};
 
     var router = this;
     var stack = this.stack;
 
     // support array of paths
+    // 支持 path 列表形式传入
     if (Array.isArray(path)) {
         path.forEach(function (p) {
             router.register.call(router, p, methods, middleware, opts);
