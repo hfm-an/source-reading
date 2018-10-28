@@ -635,6 +635,7 @@ Router.prototype.register = function (path, methods, middleware, opts) {
         ignoreCaptures: opts.ignoreCaptures
     });
 
+    // 可以设置统一的前缀
     if (this.opts.prefix) {
         route.setPrefix(this.opts.prefix);
     }
